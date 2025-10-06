@@ -2,12 +2,6 @@
 my program! 
 - **Grid Menu (toggled via ᐁ button)**:
 
-- **Copy**: Copies the content (characters or media names) of selected intersections to the clipboard.
-
-- **Paste**: Pastes clipboard content into selected intersections, assigning strings to their character data.
-
-- **Clear All**: Clears the character and media content from selected intersections (skips locked ones).
-
 - **Reset**: Resets selected intersections to original size, position, and scale (skips locked ones); removes all selection, boundary, anchor, and lock classes.
 
 - **De-select**: Removes selection from selected intersections and adds their characters to the cycle index if not already present.
@@ -66,11 +60,7 @@ my program!
 
 - **Atom Index Display**: Shows atom index entries with prefixes (⚭ for standard, ⦾ for special).
 
-- **Vector Graphics Window**:
-
-- **Vector Mode Select**: Choose mode (Pressure, Wave, Vortex) for particle animation effects.
-
-- **Vector Canvas**: Click to interact with particles based on selected mode; displays animated particles.
+- **Vector Graphics Window**: does not work
 
 - **Size Limit Window**:
 
@@ -110,7 +100,7 @@ my program!
 
 - **World Window**:
 
-- **Invert Colors Checkbox**: Toggles night mode (inverts colors across the app).
+- **Invert Colors Checkbox**: Toggles night mode (inverts colors).
 
 - **Media Input Window**:
 
@@ -118,7 +108,7 @@ my program!
 
 - **Index Media Button**: Indexes selected files and YouTube URLs into media index.
 
-- **YouTube URLs Textarea**: Paste one URL per line to index as embeddable videos.
+- **YouTube URLs Textarea**: mystery error prevents this from working, good luck!
 
 - **Widget Code Textarea**: Paste HTML/CSS/JS code to index as widgets.
 
@@ -160,8 +150,6 @@ my program!
 
 - **Ctrl + C (with selections)**: Copies selected content to clipboard.
 
-- **Ctrl + V (with selections)**: Pastes clipboard content into selected intersections.
-
 - **Delete**: Clears content from selected intersections.
 
 - **Alt + Arrow Left/Right (in input fields)**: Cycles through marriage strings in the input.
@@ -170,11 +158,9 @@ my program!
 
 - **Mouse Interactions**:
 
-- **Click Intersection**: Toggles selection; Ctrl + Click toggles anchor; Ctrl + Alt + Click toggles selection for media and sets apparatus position.
+- **Click Intersection**: Toggles selection; Ctrl + Click toggles anchor
 
-- **Shift + Drag Intersection**: Drags individual intersection.
-
-- **Alt + Drag Selected Intersection**: Drags group of selected intersections.
+- **Alt + Drag Selected Intersection**: Drags selected intersections.
 
 - **Click Outside Grid/UI**: Starts panning the grid view.
 
@@ -186,8 +172,6 @@ my program!
 
 - **Resize Control Windows**: Drag resize handles to adjust window size.
 
-- **Global Controls**:
-
 - **Wheel Zoom (Alt + Wheel)**: Zooms in/out on grid with mouse-centered panning.
 
 - **Pan (Click + Drag outside)**: Pans the grid view.
@@ -195,3 +179,4 @@ my program!
 - **Minimize Windows**: Click - button to minimize control windows to + icon.
 
 - **Close Windows**: Click x button to close windows.
+- 

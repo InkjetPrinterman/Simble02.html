@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-16">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Browser Integration: Allows iframe embedding of external URLs within security constraints -->
+    <meta name="referrer" content="no-referrer-when-downgrade">
     <title>Inkjet Printerman's Simble Cycler</title>
     <style>
         body {
@@ -23,7 +25,8 @@
     body.inverted .char-count { color: #000; background: rgba(255, 255, 255, 0.7); }
     body.inverted #vector-canvas { background: #fff; }
     body.inverted #parsed-sets-display, body.inverted #atom-index-display, 
-    body.inverted #cycle-display, body.inverted #input-index-display, body.inverted #media-index-display { color: #fff; }
+    body.inverted #cycle-display, body.inverted #input-index-display, body.inverted #media-index-display,
+    body.inverted #formatted-text-display { color: #fff; }
 
     .grid-container {
         width: 42000px;
@@ -190,7 +193,7 @@
         background: rgba(255, 255, 255, 0.8);
         font-family: monospace;
     }
-    #string-set-input, #mouse-control-input {
+    #string-set-input, #mouse-control-input, #formatted-text-input {
         width: 300px;
         height: 100px;
         resize: both;
@@ -204,7 +207,7 @@
     button { padding: 5px 10px; cursor: pointer; background: rgba(255, 255, 255, 0.8); border: 1px solid #333; font-family: Arial, sans-serif; }
     .wrap { white-space: normal; word-wrap: break-word; }
     .no-wrap { white-space: pre; overflow-x: auto; }
-    #parsed-sets-display, #atom-index-display, #cycle-display, #input-index-display, #media-index-display {
+    #parsed-sets-display, #atom-index-display, #cycle-display, #input-index-display, #media-index-display, #formatted-text-display {
         font-family: monospace;
         white-space: pre-wrap;
         color: #000;
@@ -212,11 +215,12 @@
         max-width: 300px;
     }
     #parsed-sets-display.no-shadow, #atom-index-display.no-shadow, 
-    #cycle-display.no-shadow, #input-index-display.no-shadow, #media-index-display.no-shadow { text-shadow: none; }
+    #cycle-display.no-shadow, #input-index-display.no-shadow, #media-index-display.no-shadow,
+    #formatted-text-display.no-shadow { text-shadow: none; }
     #vector-canvas { width: 100%; height: 600px; background: #000; border: none; cursor: crosshair; }
     #vector-mode { width: 150px; padding: 5px; background: rgba(255, 255, 255, 0.8); border: 1px solid #333; font-family: monospace; }
     .char-count { position: absolute; left: 180px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #fff; background: rgba(0, 0, 0, 0.7); padding: 3px 6px; border-radius: 3px; }
-    #string-set-input-count, #mouse-control-input-count { left: 330px; top: 25px; }
+    #string-set-input-count, #mouse-control-input-count, #formatted-text-input-count { left: 330px; top: 25px; }
     #toggle-visibility-btn, #toggle-actions-btn, #toggle-grid-btn {
         position: absolute;
         width: 30px;
@@ -311,6 +315,18 @@
         <span class="window-label">String Character Input Index</span>
         <div id="input-index-display"></div>
         <button onclick="clearInputIndex()">Clear All</button>
+    </div>
+    <div id="formatted-text-window" class="control-window" style="top: 650px; left: 50px;">
+        <div class="close-btn" onclick="closeWindow(this.parentElement)">x</div>
+        <div class="minimize-btn">-</div>
+        <span class="window-label">Formatted Text Input</span>
+        <div style="position: relative;">
+            <textarea id="formatted-text-input" class="no-wrap" placeholder="Paste formatted text here&#10;Line breaks, spacing, indentation&#10;will be preserved exactly"></textarea>
+            <span id="formatted-text-input-count" class="char-count">0</span>
+        </div>
+        <button onclick="processFormattedText()">Add to Cycle</button>
+        <div id="formatted-text-display"></div>
+        <button onclick="clearFormattedText()">Clear</button>
     </div>
     <div id="parsing-window" class="control-window" style="top: 250px; left: 50px;">
         <div class="close-btn" onclick="closeWindow(this.parentElement)">x</div>
@@ -417,14 +433,20 @@
         <div class="minimize-btn">-</div>
         <span class="window-label">World</span>
         <label><input type="checkbox" id="invert-checkbox"> Invert Colors</label>
+        <label for="grid-size-input">Grid Size: <span id="grid-size-value">12</span>x<span id="grid-size-value-2">12</span></label>
+        <input type="number" id="grid-size-input" min="1" max="50" value="12">
+        <input type="range" id="grid-size-slider" min="1" max="50" value="12">
+        <button onclick="applyGridSize()">Apply Grid Size</button>
     </div>
-    <!-- New Media Input Window -->
     <div id="media-input-window" class="control-window" style="top: 650px; left: 50px;">
         <div class="close-btn" onclick="closeWindow(this.parentElement)">x</div>
         <div class="minimize-btn">-</div>
         <span class="window-label">Media Input</span>
         <input type="file" id="media-file-input" multiple accept=".png,.jpeg,.jpg,.gif">
         <button id="index-media-btn">Index Media</button>
+        <br>
+        <label>Web URLs (one per line):</label>
+        <textarea id="web-urls-input" placeholder="https://example.com&#10;https://wikipedia.org" rows="3"></textarea>
         <br>
         <label>YouTube URLs (one per line):</label>
         <textarea id="youtube-urls-input" placeholder="https://www.youtube.com/watch?v=VIDEO_ID" rows="3"></textarea>
@@ -433,7 +455,6 @@
         <textarea id="widget-code-input" placeholder="Paste HTML/CSS/JS code here" rows="5"></textarea>
         <button id="add-widget-btn">Add Widget</button>
     </div>
-    <!-- New Media Index Window -->
     <div id="media-index-window" class="control-window" style="top: 650px; left: 250px;">
         <div class="close-btn" onclick="closeWindow(this.parentElement)">x</div>
         <div class="minimize-btn">-</div>
@@ -447,20 +468,90 @@
     <div id="pixel-stick"></div>
 
 <script>
+    // ═══════════════════════════════════════════════════════════════════════
+    // BROWSER INTEGRATION SYSTEM
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    // This application integrates with the local browser apparatus to display
+    // external web content within grid intersections through iframe embedding.
+    //
+    // CAPABILITIES:
+    // -------------
+    // 1. WEB URL LOADING: Any HTTPS URL can be loaded into an intersection
+    //    - Manual entry via Media Input window → Web URLs textarea
+    //    - Auto-detection when pasting URLs into grid intersections
+    //    - Full browser navigation within iframe (links, forms, scripts)
+    //
+    // 2. YOUTUBE EMBEDDING: Specialized handling for YouTube videos
+    //    - Uses youtube-nocookie.com for enhanced privacy
+    //    - Full playback controls and quality settings
+    //    - Autoplay and fullscreen capabilities
+    //
+    // 3. CUSTOM WIDGETS: HTML/CSS/JS code execution in sandboxed iframes
+    //    - Isolated execution environment
+    //    - Limited to allow-scripts and allow-same-origin
+    //
+    // SECURITY MODEL:
+    // ---------------
+    // Web URLs use enhanced iframe sandbox with these permissions:
+    //   • allow-scripts: JavaScript execution (required for modern sites)
+    //   • allow-same-origin: Access to same-origin resources
+    //   • allow-forms: Form submission within the iframe
+    //   • allow-popups: New window creation (for authentication flows)
+    //   • allow-popups-to-escape-sandbox: OAuth and external auth
+    //   • allow-top-navigation-by-user-activation: User-initiated navigation
+    //
+    // Additional permissions via 'allow' attribute:
+    //   • Camera, microphone, geolocation, payment APIs
+    //   • Autoplay, clipboard, encrypted media
+    //
+    // BROWSER RESTRICTIONS:
+    // ---------------------
+    // The browser enforces same-origin policy and X-Frame-Options headers:
+    //   • Sites with X-Frame-Options: DENY cannot be embedded
+    //   • Sites with X-Frame-Options: SAMEORIGIN require same domain
+    //   • Cross-origin restrictions apply to iframe content access
+    //   • Some authentication flows may not work due to third-party cookies
+    //
+    // ERROR HANDLING:
+    // ---------------
+    // When a URL cannot be loaded (blocked by X-Frame-Options or CSP):
+    //   • iframe.onerror callback triggers
+    //   • Error message displayed in intersection
+    //   • URL remains in mediaIndex for retry or reference
+    //
+    // RELAY-CHECK-IN SYSTEM:
+    // ----------------------
+    // The relay-check-in system refers to the automatic scaling and
+    // attenuation of iframe content as users navigate, zoom, and cycle
+    // through intersections. The browser apparatus naturally handles:
+    //   • Content loading/unloading as intersections enter/leave viewport
+    //   • Resource management and memory cleanup
+    //   • Event propagation between parent and iframe contexts
+    //   • Automatic adjustment to grid transformations and scaling
+    //
+    // USAGE:
+    // ------
+    // 1. Open Media Input window from visibility menu
+    // 2. Enter URLs in "Web URLs" textarea (one per line)
+    // 3. Click "Index Media" to add to rotation
+    // 4. Use Shift+Scroll to cycle through media on selected intersections
+    // 5. OR: Paste URLs directly into grid intersections for auto-loading
+    //
+    // ═══════════════════════════════════════════════════════════════════════
+
     function createSelectionApparatus({
   gridSize = 10,
   initialPosition = { x: 0, y: 0 },
   onStateChange = () => {},
 } = {}) {
-  // Initialize state
   const state = {
-    currentPosition: { ...initialPosition }, // Most recently selected position
-    currentDirection: null, // Persistent direction: 'up', 'down', 'left', 'right', or null
-    grid: Array(gridSize).fill().map(() => Array(gridSize).fill(false)), // Selection states
-    lastSelected: { ...initialPosition }, // Tracks most recently selected intersection
+    currentPosition: { ...initialPosition },
+    currentDirection: null,
+    grid: Array(gridSize).fill().map(() => Array(gridSize).fill(false)),
+    lastSelected: { ...initialPosition },
   };
 
-  // Validate initial position
   if (
     initialPosition.x < 0 || initialPosition.x >= gridSize ||
     initialPosition.y < 0 || initialPosition.y >= gridSize
@@ -468,32 +559,19 @@
     throw new Error('Initial position out of grid bounds');
   }
 
-  // Set initial position as selected
   state.grid[initialPosition.y][initialPosition.x] = true;
 
-  /**
-   * Toggles selection status at a given position and updates state.
-   * @param {Object} position - {x, y} coordinates
-   * @param {boolean} [isMouseClick=false] - Indicates if triggered by mouse click
-   */
   function select(position, isMouseClick = false) {
     if (
       position.x >= 0 && position.x < gridSize &&
       position.y >= 0 && position.y < gridSize
     ) {
-      // Toggle selection status
       state.grid[position.y][position.x] = !state.grid[position.y][position.x];
-      
-      // Update last selected and current position
       state.lastSelected = { ...position };
       state.currentPosition = { ...position };
-      
-      // Reset direction on mouse click to allow free movement
       if (isMouseClick) {
         state.currentDirection = null;
       }
-      
-      // Trigger state change callback
       onStateChange({
         position,
         isSelected: state.grid[position.y][position.x],
@@ -503,49 +581,33 @@
     }
   }
 
-  /**
-   * Handles key input events (Ctrl + directional keys).
-   * @param {Object} event - Key event with {key, ctrlKey}
-   */
   function handleKeyInput(event) {
-    if (!event.ctrlKey) return; // Only process Ctrl + keys
-
+    if (!event.ctrlKey) return;
     const directionMap = {
       ArrowUp: { x: 0, y: -1, name: 'up' },
       ArrowDown: { x: 0, y: 1, name: 'down' },
       ArrowLeft: { x: -1, y: 0, name: 'left' },
       ArrowRight: { x: 1, y: 0, name: 'right' },
     };
-
     if (directionMap[event.key]) {
       const move = directionMap[event.key];
       const newX = state.currentPosition.x + move.x;
       const newY = state.currentPosition.y + move.y;
-
-      // Check if new position is within bounds
       if (
         newX >= 0 && newX < gridSize &&
         newY >= 0 && newY < gridSize
       ) {
         state.currentPosition = { x: newX, y: newY };
         state.currentDirection = move.name;
-        select(state.currentPosition); // Toggle selection
+        select(state.currentPosition);
       }
     }
   }
 
-  /**
-   * Handles mouse click events to set a new start position.
-   * @param {Object} position - {x, y} coordinates from mouse click
-   */
   function handleMouseClick(position) {
-    select(position, true); // Toggle selection and set as new start
+    select(position, true);
   }
 
-  /**
-   * Gets the current state (read-only copy).
-   * @returns {Object} Current state
-   */
   function getState() {
     return {
       currentPosition: { ...state.currentPosition },
@@ -555,7 +617,6 @@
     };
   }
 
-  // Return public API
   return {
     handleKeyInput,
     handleMouseClick,
@@ -563,6 +624,7 @@
     select,
   };
 }
+
     const grid = document.getElementById('grid');
     const intersections = [];
     const cycleIndex = [];
@@ -586,6 +648,55 @@
     let currentSetText = '';
     const mediaIndex = [];
     let isShiftPressed = false;
+    let currentFormattedText = '';
+    let currentGridSize = 12;
+    let apparatus = null;
+
+    // ── OBJ D / E / F: formatting-preservation infrastructure ──────────────
+    //
+    // formattedFlags: Map<string, true>
+    //   Registry of every string that entered the system via a path that
+    //   preserves original whitespace structure.  When a string is flagged here
+    //   the rendering gate (renderText) returns it verbatim — no wrapText.
+    //
+    // addToCycleIfNew(str, isFormatted)
+    //   Single chokepoint for all cycleIndex insertions.  Registers the
+    //   formatting flag at the same moment the string enters the cycle.
+    //
+    // renderText(str)
+    //   Rendering gate.  Flagged strings bypass wrapText entirely so that
+    //   their \n (line breaks), \t (tabs), runs of spaces (indentation /
+    //   column alignment), and empty lines (paragraph breaks) all reach the
+    //   DOM text node unchanged.
+    //
+    // hasOriginalFormatting(str)
+    //   Detector.  Returns true when str contains any signature of manual
+    //   formatting: newlines, tabs, or two-or-more consecutive spaces.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const formattedFlags = new Map();
+
+    function addToCycleIfNew(str, isFormatted) {
+        if (str !== undefined && str !== null && !cycleIndex.includes(str)) {
+            cycleIndex.push(str);
+            if (isFormatted) {
+                formattedFlags.set(str, true);
+            }
+        }
+    }
+
+    function renderText(str) {
+        if (formattedFlags.has(str)) {
+            return str;
+        }
+        return wrapText(str, breakLimit);
+    }
+
+    function hasOriginalFormatting(str) {
+        return /[\n\t]/.test(str) || /  /.test(str);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
 
     const visibilityElements = [
         { id: 'grid', label: 'Grid Visibility', element: document.getElementById('grid') },
@@ -593,6 +704,7 @@
         { id: 'input-window', label: 'User Input Set', element: document.getElementById('input-window') },
         { id: 'cycle-window', label: 'Cycle Index', element: document.getElementById('cycle-window') },
         { id: 'input-index-window', label: 'String Character Input Index', element: document.getElementById('input-index-window') },
+        { id: 'formatted-text-window', label: 'Formatted Text Input', element: document.getElementById('formatted-text-window') },
         { id: 'parsing-window', label: 'String Character Parsing', element: document.getElementById('parsing-window') },
         { id: 'parsed-sets-window', label: 'Parsed String Sets Index', element: document.getElementById('parsed-sets-window') },
         { id: 'mouse-control-window', label: 'Mouse Control', element: document.getElementById('mouse-control-window') },
@@ -723,7 +835,8 @@
         { id: 'search-input', countId: 'search-input-count' },
         { id: 'char-input', countId: 'char-input-count' },
         { id: 'string-set-input', countId: 'string-set-input-count' },
-        { id: 'mouse-control-input', countId: 'mouse-control-input-count' }
+        { id: 'mouse-control-input', countId: 'mouse-control-input-count' },
+        { id: 'formatted-text-input', countId: 'formatted-text-input-count' }
     ];
     inputs.forEach(({ id, countId }) => {
         const input = document.getElementById(id);
@@ -772,6 +885,34 @@
     document.getElementById('invert-checkbox').addEventListener('change', (e) => {
         document.body.classList.toggle('inverted', e.target.checked);
     });
+
+    // ── GRID SIZE CONTROLS ──────────────────────────────────────────────────
+    const gridSizeSlider = document.getElementById('grid-size-slider');
+    const gridSizeInput = document.getElementById('grid-size-input');
+    const gridSizeValue = document.getElementById('grid-size-value');
+    const gridSizeValue2 = document.getElementById('grid-size-value-2');
+
+    gridSizeSlider.addEventListener('input', () => {
+        gridSizeValue.textContent = gridSizeSlider.value;
+        gridSizeValue2.textContent = gridSizeSlider.value;
+        gridSizeInput.value = gridSizeSlider.value;
+    });
+
+    gridSizeInput.addEventListener('input', () => {
+        let value = Math.max(1, Math.min(50, parseInt(gridSizeInput.value) || 12));
+        gridSizeSlider.value = value;
+        gridSizeValue.textContent = value;
+        gridSizeValue2.textContent = value;
+    });
+
+    function applyGridSize() {
+        const newSize = parseInt(gridSizeSlider.value);
+        if (newSize !== currentGridSize) {
+            createGrid(newSize);
+            document.getElementById('world-window').style.display = 'none';
+            updateVisibilityMenu();
+        }
+    }
 
     const canvas = document.getElementById('vector-canvas');
     const ctx = canvas.getContext('2d');
@@ -875,68 +1016,91 @@
         selectedSymbol = cycleIndex[cycleIndex.length - 1] || '□';
     }
 
-    for (let i = 0; i < 12; i++) {
-        for (let j = 0; j < 12; j++) {
-            const intersection = document.createElement('div');
-            intersection.classList.add('intersection');
-            const content = document.createElement('div');
-            content.classList.add('intersection-content');
-            intersection.appendChild(content);
-            intersection.dataset.row = i;
-            intersection.dataset.col = j;
-            intersection.dataset.char = '';
-            intersection.dataset.media = '';
-            intersection.dataset.initialLeft = j * 3500;
-            intersection.dataset.initialTop = i * 3500;
-            intersection.dataset.originalWidth = '2856';
-            intersection.dataset.originalHeight = '2856';
-            intersection.dataset.gridScale = '1';
-            intersection.dataset.contentScale = '1';
-            intersection.dataset.isScaled = 'false';
-            intersection.style.left = `${j * 3500}px`;
-            intersection.style.top = `${i * 3500}px`;
-            intersection.style.width = '2856px';
-            intersection.style.height = '2856px';
-            intersection.addEventListener('click', (e) => handleIntersectionClick(e, intersection));
-            intersection.addEventListener('keydown', (e) => handleKeyInput(e, intersection));
-            intersection.addEventListener('mousedown', (e) => startIntersectionDrag(e, intersection));
-            intersection.setAttribute('tabindex', '0');
-            grid.appendChild(intersection);
-            intersections.push(intersection);
+    // ── DYNAMIC GRID CREATION ───────────────────────────────────────────────
+    // Creates grid intersections dynamically based on currentGridSize.
+    // Can be called to rebuild grid when size changes.
+    function createGrid(size) {
+        // Clear existing grid
+        grid.innerHTML = '';
+        intersections.length = 0;
+        selectedIntersections = [];
+        boundaryIntersections = [];
+        anchorIntersections = [];
+        lockedIntersections = [];
+
+        currentGridSize = size;
+
+        // Create new grid
+        for (let i = 0; i < size; i++) {
+            for (let j = 0; j < size; j++) {
+                const intersection = document.createElement('div');
+                intersection.classList.add('intersection');
+                const content = document.createElement('div');
+                content.classList.add('intersection-content');
+                intersection.appendChild(content);
+                intersection.dataset.row = i;
+                intersection.dataset.col = j;
+                intersection.dataset.char = '';
+                intersection.dataset.media = '';
+                intersection.dataset.initialLeft = j * 3500;
+                intersection.dataset.initialTop = i * 3500;
+                intersection.dataset.originalWidth = '2856';
+                intersection.dataset.originalHeight = '2856';
+                intersection.dataset.gridScale = '1';
+                intersection.dataset.contentScale = '1';
+                intersection.dataset.isScaled = 'false';
+                intersection.style.left = `${j * 3500}px`;
+                intersection.style.top = `${i * 3500}px`;
+                intersection.style.width = '2856px';
+                intersection.style.height = '2856px';
+                intersection.addEventListener('click', (e) => handleIntersectionClick(e, intersection));
+                intersection.addEventListener('keydown', (e) => handleKeyInput(e, intersection));
+                intersection.addEventListener('mousedown', (e) => startIntersectionDrag(e, intersection));
+                intersection.setAttribute('tabindex', '0');
+                grid.appendChild(intersection);
+                intersections.push(intersection);
+            }
         }
+
+        // Recreate selection apparatus with new grid size
+        const initialX = Math.floor(size / 2);
+        const initialY = Math.floor(size / 2);
+        
+        apparatus = createSelectionApparatus({
+            gridSize: size,
+            initialPosition: { x: initialX, y: initialY },
+            onStateChange: ({ position, isSelected, isMouseClick, state }) => {
+                if (position) {
+                    const idx = position.y * size + position.x;
+                    const i = intersections[idx];
+                    if (isSelected) {
+                        i.classList.add('selected');
+                    } else {
+                        i.classList.remove('selected');
+                    }
+                }
+                selectedIntersections = intersections.filter(i => i.classList.contains('selected'));
+                if (selectedIntersections.length > 0) {
+                    updateControlWindows(selectedIntersections[selectedIntersections.length - 1]);
+                }
+            },
+        });
+
+        // Initialize selection state
+        const initState = apparatus.getState();
+        initState.grid.forEach((row, y) => {
+            row.forEach((sel, x) => {
+                const i = intersections[y * size + x];
+                if (sel) {
+                    i.classList.add('selected');
+                }
+            });
+        });
+        selectedIntersections = intersections.filter(i => i.classList.contains('selected'));
     }
 
-    const apparatus = createSelectionApparatus({
-  gridSize: 12,
-  initialPosition: { x: 5, y: 5 },
-  onStateChange: ({ position, isSelected, isMouseClick, state }) => {
-    if (position) {
-      const idx = position.y * 12 + position.x;
-      const i = intersections[idx];
-      if (isSelected) {
-        i.classList.add('selected');
-      } else {
-        i.classList.remove('selected');
-      }
-    }
-    selectedIntersections = intersections.filter(i => i.classList.contains('selected'));
-    if (selectedIntersections.length > 0) {
-      updateControlWindows(selectedIntersections[selectedIntersections.length - 1]);
-    }
-  },
-});
-const initState = apparatus.getState();
-initState.grid.forEach((row, y) => {
-  row.forEach((sel, x) => {
-    const i = intersections[y * 12 + x];
-    if (sel) {
-      i.classList.add('selected');
-    }
-  });
-});
-selectedIntersections = intersections.filter(i => i.classList.contains('selected'));
-
-    // ... (rest of the script remains the same)
+    // Initialize grid with default size
+    createGrid(currentGridSize);
 
     function enableSetTextMode() {
         isSetTextMode = !isSetTextMode;
@@ -982,7 +1146,7 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         visibilityElements.forEach(({ element }) => {
             element.style.display = 'flex';
             element.classList.toggle('no-shadow', !shadowsEnabled);
-            element.querySelectorAll('.window-label, #parsed-sets-display, #atom-index-display, #cycle-display, #input-index-display, #media-index-display')
+            element.querySelectorAll('.window-label, #parsed-sets-display, #atom-index-display, #cycle-display, #input-index-display, #media-index-display, #formatted-text-display')
                 .forEach(el => el.classList.toggle('no-shadow', !shadowsEnabled));
         });
         document.querySelectorAll('.grid-option, .visibility-option, .action-option, #toggle-visibility-btn, #toggle-actions-btn, #toggle-grid-btn')
@@ -993,11 +1157,22 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         updateVisibilityMenu();
     }
 
+    // ── OBJ F: multi-line width measurement ─────────────────────────────────
+    // Splits on \n and measures each line individually.  Returns the width of
+    // the longest line so that indented / multi-line strings produce an
+    // intersection box that is wide enough to display every line without
+    // horizontal clipping.
     function getTextWidth(text, font) {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        ctx.font = font;
-        return ctx.measureText(text).width;
+        const c = document.createElement('canvas');
+        const cx = c.getContext('2d');
+        cx.font = font;
+        const lines = text.split('\n');
+        let maxW = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const w = cx.measureText(lines[i]).width;
+            if (w > maxW) maxW = w;
+        }
+        return maxW;
     }
 
     function getCharacterBoundingBox(char, font) {
@@ -1030,6 +1205,10 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         return bb;
     }
 
+    // ── OBJ D / E / F: rendering gate in content updater ────────────────────
+    // updateIntersectionContent now routes all text through renderText().
+    // Flagged strings (original formatting present) are written to the DOM
+    // exactly as stored.  Unflagged strings go through wrapText as before.
     function updateIntersectionContent(intersection) {
         const contentDiv = intersection.querySelector('.intersection-content');
         contentDiv.innerHTML = '';
@@ -1043,6 +1222,21 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
                 iframe.frameBorder = '0';
                 iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
                 iframe.allowFullscreen = true;
+                contentDiv.appendChild(iframe);
+            } else if (item && item.type === 'weburl') {
+                const iframe = document.createElement('iframe');
+                iframe.src = item.dataUrl;
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.frameBorder = '0';
+                // Enhanced sandbox permissions for web browsing while maintaining security
+                iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation';
+                iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; payment; geolocation; microphone; camera';
+                iframe.referrerPolicy = 'no-referrer-when-downgrade';
+                // Error handling for cross-origin restrictions
+                iframe.onerror = () => {
+                    contentDiv.innerHTML = '<div style="color: red; padding: 20px; text-align: center;">Unable to load URL. Cross-origin restrictions may apply.</div>';
+                };
                 contentDiv.appendChild(iframe);
             } else if (item && item.type === 'widget') {
                 const iframe = document.createElement('iframe');
@@ -1063,11 +1257,18 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
                 contentDiv.appendChild(img);
             }
         } else if (intersection.dataset.char) {
-            const text = document.createTextNode(wrapText(intersection.dataset.char, breakLimit));
+            // renderText gate: flagged → verbatim; unflagged → wrapText
+            const rendered = renderText(intersection.dataset.char);
+            const text = document.createTextNode(rendered);
             contentDiv.appendChild(text);
         }
     }
 
+    // ── OBJ F: line-count-aware intersection sizing ─────────────────────────
+    // When the rendered string contains newlines the intersection height is
+    // scaled by the number of lines.  This prevents vertical clipping of
+    // indented paragraphs, multi-line pastes, and any other structure that
+    // contains original line breaks.
     function resizeIntersection(intersection) {
         const maxHeight = parseInt(document.getElementById('max-size-slider').value);
         const minHeight = parseInt(document.getElementById('min-size-slider').value);
@@ -1101,8 +1302,17 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         } else {
             const content = intersection.dataset.char;
             if (content) {
-                newWidth = getTextWidth(content, font) + 60;
-                newHeight = getCharacterBoundingBox(content, font).height + 75;
+                // Measure the rendered form so formatted strings (with
+                // original \n structure) size correctly.
+                const rendered = renderText(content);
+                // getTextWidth measures the longest line in multi-line text
+                newWidth = getTextWidth(rendered, font) + 60;
+                // Scale height by line count for multi-line / paragraph text
+                const lines = rendered.split('\n');
+                const lineCount = lines.length;
+                const sampleLine = lines.find(l => l.trim().length > 0) || content;
+                const singleH = getCharacterBoundingBox(sampleLine, font).height;
+                newHeight = (singleH * lineCount) + 75;
             } else {
                 newWidth = parseFloat(intersection.dataset.originalWidth);
                 newHeight = parseFloat(intersection.dataset.originalHeight);
@@ -1489,6 +1699,8 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
             const wasSelected = state.grid[row][col];
             apparatus.select({x: col, y: row});
             if (wasSelected && intersection.dataset.char && !cycleIndex.includes(intersection.dataset.char)) {
+                // OBJ E: the char's flag already lives in formattedFlags from
+                // the moment it first entered — just push to cycle array.
                 cycleIndex.push(intersection.dataset.char);
                 document.getElementById('cycle-display').textContent = cycleIndex.join(', ');
                 updateSelectedSymbol();
@@ -1552,15 +1764,23 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         bgOpacityValue.textContent = bgOpacitySlider.value;
     }
 
+    // ── OBJ D: intersection key-commit — .trim() removed ────────────────────
+    // The value is taken from the input exactly as it exists when Enter is
+    // pressed.  If it arrived via paste with leading/trailing spaces or tabs
+    // those are preserved.  hasOriginalFormatting() flags it so renderText()
+    // will keep the structure intact during display and cycling.
     function handleKeyInput(e, intersection) {
         if (intersection.classList.contains('locked')) return;
         if (e.key === 'Enter' && e.target.value) {
-            const input = e.target.value.trim();
+            const input = e.target.value;                  // ← no .trim()
             if (input) {
                 intersection.dataset.char = input;
                 intersection.dataset.media = '';
                 intersection.dataset.isScaled = 'false';
                 updateIntersectionContent(intersection);
+                if (hasOriginalFormatting(input)) {
+                    formattedFlags.set(input, true);
+                }
                 inputIndex.add(input);
                 resizeIntersection(intersection);
                 updateInputIndexDisplay();
@@ -1748,20 +1968,24 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         updateInputIndexDisplay();
     }
 
+    // ── OBJ D: search — .trim() removed ─────────────────────────────────────
+    // Strings stored on intersections via paste may contain leading / trailing
+    // whitespace.  Removing .trim() here lets the search value match those
+    // strings exactly as stored.
     function searchAndSelect() {
-        const searchStr = document.getElementById('search-input').value.trim();
+        const searchStr = document.getElementById('search-input').value;   // no .trim()
         if (!searchStr) return;
         const matchingRowsCols = [];
         intersections.forEach((i, idx) => {
           if (i.dataset.char === searchStr) {
-            const y = Math.floor(idx / 12);
-            const x = idx % 12;
+            const y = Math.floor(idx / currentGridSize);
+            const x = idx % currentGridSize;
             matchingRowsCols.push({x, y});
           }
         });
         const state = apparatus.getState();
-        for (let y = 0; y < 12; y++) {
-          for (let x = 0; x < 12; x++) {
+        for (let y = 0; y < currentGridSize; y++) {
+          for (let x = 0; x < currentGridSize; x++) {
             if (state.grid[y][x]) {
               apparatus.select({x, y});
             }
@@ -1772,23 +1996,55 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         });
         if (matchingRowsCols.length > 0) {
           const last = matchingRowsCols[matchingRowsCols.length - 1];
-          const lastI = intersections[last.y * 12 + last.x];
+          const lastI = intersections[last.y * currentGridSize + last.x];
           updateControlWindows(lastI);
         }
     }
 
+    // ── OBJ D: User Input Set → cycleIndex — .trim() removed ────────────────
+    // Value is taken exactly as present in the input field.  If it arrived via
+    // paste with indentation or spacing structure hasOriginalFormatting() flags
+    // it so the structure survives cycling and rendering.
     function addToCycleIndex() {
-        const str = document.getElementById('char-input').value.trim();
-        if (str && !cycleIndex.includes(str)) {
-            cycleIndex.push(str);
+        const str = document.getElementById('char-input').value;   // no .trim()
+        if (str) {
+            addToCycleIfNew(str, hasOriginalFormatting(str));
             document.getElementById('cycle-display').textContent = cycleIndex.join(', ');
             updateSelectedSymbol();
         }
         document.getElementById('char-input').value = '';
     }
 
+    // ── NEW: Formatted Text Input processor ──────────────────────────────────
+    // Takes the complete textarea content as a single unit — every line break,
+    // space, tab, indentation, and paragraph structure is preserved exactly.
+    // The entire block becomes one cycleable item that displays identically
+    // to the pasted source across all cycling and rendering operations.
+    function processFormattedText() {
+        const text = document.getElementById('formatted-text-input').value;
+        if (text) {
+            currentFormattedText = text;
+            // Always flag as formatted — it's the entire point of this window
+            addToCycleIfNew(text, true);
+            document.getElementById('formatted-text-display').textContent = 
+                `Current formatted text:\n${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`;
+            document.getElementById('cycle-display').textContent = cycleIndex.join(', ');
+            updateSelectedSymbol();
+        }
+    }
+
+    function clearFormattedText() {
+        currentFormattedText = '';
+        document.getElementById('formatted-text-input').value = '';
+        document.getElementById('formatted-text-display').textContent = '';
+        document.getElementById('formatted-text-input-count').textContent = '0';
+    }
+
+    // clearCycleIndex also clears the formatting registry so that stale flags
+    // do not persist across a full reset.
     function clearCycleIndex() {
         cycleIndex.length = 0;
+        formattedFlags.clear();
         document.getElementById('cycle-display').textContent = '';
         updateSelectedSymbol();
     }
@@ -1799,18 +2055,34 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         stringSetInput.classList.toggle('wrap');
     }
 
+    // ── OBJ D / F: space-limit parser ───────────────────────────────────────
+    // Original behaviour: .trim() then split(/\s+/) collapsed every newline,
+    // tab and multi-space run into single word boundaries.
+    //
+    // Altered behaviour: the raw textarea value is used (no .trim()).  It is
+    // split on a single space character only, so tabs, runs of consecutive
+    // spaces, and embedded newlines within tokens are not collapsed.  Each
+    // resulting token is length-checked (after stripping trailing punctuation)
+    // and, if it matches a requested limit, added to the cycle via the gate
+    // with its formatting flag set appropriately.
     function parseBySpaceLimit() {
         const spaceLimitsInput = document.getElementById('space-limit-input').value.trim();
         const spaceLimits = spaceLimitsInput.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
-        const input = document.getElementById('string-set-input').value.trim();
+        const input = document.getElementById('string-set-input').value;   // no .trim()
         if (!input || spaceLimits.length === 0) return;
-        const words = input.split(/\s+/);
-        const cleanedWords = words.map(word => word.replace(/[,.;!?]+$/g, ''));
-        const parsedStrings = cleanedWords.filter(word => spaceLimits.includes(word.length));
+        // Split on single space only — preserves \t, multi-space runs, \n
+        const words = input.split(' ');
+        const parsedStrings = [];
+        words.forEach(word => {
+            const cleaned = word.replace(/[,.;!?]+$/g, '');
+            if (spaceLimits.includes(cleaned.length)) {
+                parsedStrings.push(word);   // original token, punctuation intact
+            }
+        });
         const newParsedSets = parsedStrings.map(s => ({ symbol: s }));
         if (newParsedSets.length > 0) {
             parsedSets.push(...newParsedSets);
-            parsedStrings.forEach(s => { if (!cycleIndex.includes(s)) cycleIndex.push(s); });
+            parsedStrings.forEach(s => { addToCycleIfNew(s, hasOriginalFormatting(s)); });
             updateParsedSetsDisplay();
             document.getElementById('cycle-display').textContent = cycleIndex.join(', ');
             updateSelectedSymbol();
@@ -1836,16 +2108,29 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         updateParsedSetsDisplay();
     }
 
+    // ── OBJ D / F: Mouse Control paste processor ────────────────────────────
+    // Original behaviour: .trim() then split(/\s+/) — every newline, tab and
+    // multi-space run was collapsed.
+    //
+    // Altered behaviour: the raw textarea value (no .trim()) is split on '\n'
+    // only.  Each resulting line retains its full internal structure — leading
+    // spaces (indentation), tabs, trailing spaces, column spacing.  A single
+    // trailing empty string produced by a final \n is removed; interior empty
+    // strings (paragraph-break lines) are kept so that paragraph spacing
+    // survives into cycleIndex.  Every line is flagged via hasOriginalFormatting()
+    // before cycle insertion.
     function processMouseControlPaste() {
-        const input = document.getElementById('mouse-control-input').value.trim();
+        const input = document.getElementById('mouse-control-input').value;   // no .trim()
         if (!input) return;
-        const strings = input.split(/\s+/).filter(s => s !== '');
-        const gearSet = strings;
-        const atomGroups = gearSet;
-        const marriageStrings = atomGroups.filter(str => str.length > 0 && str[0] !== ' ' && str[str.length - 1] !== ' ');
+        const lines = input.split('\n');
+        // Drop only a single trailing empty string (artifact of a final \n);
+        // keep interior empty lines (paragraph breaks).
+        const entries = (lines.length > 0 && lines[lines.length - 1] === '')
+            ? lines.slice(0, -1)
+            : lines;
         atomIndex.length = 0;
-        marriageStrings.forEach(str => atomIndex.push({ string: str, isSpecial: false }));
-        marriageStrings.forEach(str => { if (!cycleIndex.includes(str)) cycleIndex.push(str); });
+        entries.forEach(str => atomIndex.push({ string: str, isSpecial: false }));
+        entries.forEach(str => { addToCycleIfNew(str, hasOriginalFormatting(str)); });
         updateAtomIndexDisplay();
         document.getElementById('cycle-display').textContent = cycleIndex.join(', ');
         updateSelectedSymbol();
@@ -1854,8 +2139,14 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
 
     document.getElementById('parse-special-btn').addEventListener('click', parseSpecialStrings);
 
+    // ── OBJ D / F: special (sentence) parser ────────────────────────────────
+    // Sentence extraction still collapses newlines to spaces for the regex
+    // (sentences can span source lines).  Each extracted sentence is stored
+    // verbatim as matched and flagged as formatted so that any internal
+    // spacing structure (e.g. preserved from within a line) survives cycling
+    // and rendering.
     function parseSpecialStrings() {
-        const input = document.getElementById('mouse-control-input').value.trim();
+        const input = document.getElementById('mouse-control-input').value;   // no .trim()
         if (!input) return;
         const normalizedInput = input.replace(/\n+/g, ' ');
         const sentencePattern = /([A-Z][^.!?]*[.!?])/g;
@@ -1871,7 +2162,9 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         }
         atomIndex.length = 0;
         specialStrings.forEach(str => { if (str) atomIndex.push({ string: str, isSpecial: true }); });
-        specialStrings.forEach(str => { if (str && !cycleIndex.includes(str)) cycleIndex.push(str); });
+        // Sentences are multi-word phrases — flag as formatted so wrapText
+        // does not re-break them.
+        specialStrings.forEach(str => { if (str) addToCycleIfNew(str, true); });
         updateAtomIndexDisplay();
         document.getElementById('cycle-display').textContent = cycleIndex.join(', ');
         updateSelectedSymbol();
@@ -1979,17 +2272,69 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         navigator.clipboard.writeText(symbols).catch(err => console.error('Copy failed:', err));
     }
 
+    // ── OBJ D / F: clipboard paste → grid intersections ────────────────────
+    // Original behaviour: text.trim().split(/\s+/) — every newline, tab and
+    // multi-space run was collapsed into single-character word boundaries and
+    // each "word" was placed on one intersection.
+    //
+    // Altered behaviour: the clipboard text is split on '\n' only.  Each line
+    // maps to one selected intersection and arrives with its complete row
+    // structure intact — leading spaces (indentation), tabs, trailing spaces,
+    // internal spacing.  A single trailing empty string from a final \n is
+    // removed; interior empty lines (paragraph breaks) are kept.  Each line is
+    // flagged via hasOriginalFormatting() so renderText() and cycling honour
+    // the original structure.
+    //
+    // URL AUTO-DETECTION: If a line is a valid URL, it's automatically added
+    // to mediaIndex as a weburl type and displayed as an iframe.
+    function isValidURL(str) {
+        try {
+            const url = new URL(str.trim());
+            return url.protocol === 'http:' || url.protocol === 'https:';
+        } catch {
+            return false;
+        }
+    }
+
     async function pasteToSelected() {
         try {
             const text = await navigator.clipboard.readText();
-            const strings = text.trim().split(/\s+/);
+            const lines = text.split('\n');
+            // Drop only a single trailing empty string; keep interior empties
+            const entries = (lines.length > 0 && lines[lines.length - 1] === '')
+                ? lines.slice(0, -1)
+                : lines;
             selectedIntersections.forEach((intersection, index) => {
-                if (strings[index] && !intersection.classList.contains('locked')) {
-                    intersection.dataset.char = strings[index];
-                    intersection.dataset.media = '';
+                if (entries[index] !== undefined && !intersection.classList.contains('locked')) {
+                    const line = entries[index];
+                    
+                    // Auto-detect URLs and convert to media
+                    if (isValidURL(line)) {
+                        const url = line.trim();
+                        const urlObj = new URL(url);
+                        const name = `Web: ${urlObj.hostname}${urlObj.pathname}`;
+                        
+                        // Check if URL already in mediaIndex
+                        let existingItem = mediaIndex.find(m => m.dataUrl === url && m.type === 'weburl');
+                        if (!existingItem) {
+                            mediaIndex.push({ name, dataUrl: url, type: 'weburl' });
+                            existingItem = mediaIndex[mediaIndex.length - 1];
+                            updateMediaIndexDisplay();
+                        }
+                        
+                        intersection.dataset.media = url;
+                        intersection.dataset.char = '';
+                    } else {
+                        intersection.dataset.char = line;
+                        intersection.dataset.media = '';
+                        if (hasOriginalFormatting(line)) {
+                            formattedFlags.set(line, true);
+                        }
+                        inputIndex.add(line);
+                    }
+                    
                     intersection.dataset.isScaled = 'false';
                     updateIntersectionContent(intersection);
-                    inputIndex.add(strings[index]);
                     resizeIntersection(intersection);
                     const contentScale = parseFloat(intersection.dataset.contentScale) || 1;
                     const content = intersection.querySelector('.intersection-content');
@@ -2038,8 +2383,8 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         });
         intersections.forEach(intersection => intersection.classList.remove('selected', 'boundary', 'anchor', 'locked'));
         const state = apparatus.getState();
-        for (let y = 0; y < 12; y++) {
-          for (let x = 0; x < 12; x++) {
+        for (let y = 0; y < currentGridSize; y++) {
+          for (let x = 0; x < currentGridSize; x++) {
             if (state.grid[y][x]) {
               apparatus.select({x, y});
             }
@@ -2051,6 +2396,7 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
     document.getElementById('deselect-btn').addEventListener('click', () => {
         selectedIntersections.forEach(intersection => {
             if (intersection.dataset.char && !cycleIndex.includes(intersection.dataset.char)) {
+                // OBJ E: flag already lives in formattedFlags from first entry
                 cycleIndex.push(intersection.dataset.char);
             }
             const row = parseInt(intersection.dataset.row);
@@ -2069,6 +2415,12 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
         });
     });
 
+    // ── OBJ E: cycling with formatting preservation ────────────────────────
+    // cycleIndex[] stores strings exactly as they were entered.  formattedFlags
+    // carries their flag status.  When a string is set on an intersection and
+    // updateIntersectionContent() runs, renderText() checks formattedFlags and
+    // returns flagged strings verbatim — so indentation, tabs, paragraph breaks
+    // and line spacing all survive every cycle step without modification.
     function cycleIntersections(intersectionsToCycle, isForward) {
         if (cycleIndex.length === 0) return;
         intersectionsToCycle.forEach(intersection => {
@@ -2082,9 +2434,9 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
             intersection.dataset.char = newContent;
             intersection.dataset.media = '';
             intersection.dataset.isScaled = 'false';
-            updateIntersectionContent(intersection);
+            updateIntersectionContent(intersection);   // renderText gate active
             inputIndex.add(newContent);
-            resizeIntersection(intersection);
+            resizeIntersection(intersection);           // line-count-aware sizing
             const contentScale = parseFloat(intersection.dataset.contentScale) || 1;
             const content = intersection.querySelector('.intersection-content');
             content.style.transform = `scale(${contentScale})`;
@@ -2245,6 +2597,22 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
             const dataUrl = await readFileAsDataURL(file);
             mediaIndex.push({ name: file.name, dataUrl });
         }
+        
+        // Process Web URLs
+        const webUrlTextarea = document.getElementById('web-urls-input');
+        const webUrls = webUrlTextarea.value.trim().split('\n').filter(u => u.trim());
+        for (const url of webUrls) {
+            try {
+                const urlObj = new URL(url);
+                const name = `Web: ${urlObj.hostname}${urlObj.pathname}`;
+                mediaIndex.push({ name, dataUrl: url, type: 'weburl' });
+            } catch (e) {
+                console.warn(`Invalid URL: ${url}`);
+            }
+        }
+        webUrlTextarea.value = '';
+        
+        // Process YouTube URLs
         const youtubeTextarea = document.getElementById('youtube-urls-input');
         const urls = youtubeTextarea.value.trim().split('\n').filter(u => u.trim());
         for (const url of urls) {
@@ -2256,6 +2624,7 @@ selectedIntersections = intersections.filter(i => i.classList.contains('selected
             }
         }
         youtubeTextarea.value = '';
+        
         updateMediaIndexDisplay();
         fileInput.value = '';
     });

@@ -16,3 +16,5 @@ Set Boundary via the button menus.
 ARROW KEYS / SCROLL WHEEL cycles grid square 
 
 SHIFT + ARROW KEYS cycles media from media index. 
+
+STUPID REDUNDANCY: "mouse control" is a sentence parser, that will not parse decimal numericals correctly. Standard english sentences will work, there are 2 parse buttons, one with a special symbol, that special symbol button will parse sentences as long as there are no "1.2 out of 1" type sentences. 

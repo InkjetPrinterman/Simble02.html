@@ -9,7 +9,7 @@ remember to zoom!
 
 CTRL+ARROW KEYS to select grid squares 
 
-CTRL+RIGHT CLICK to set "anchor" square. (cycling this square will cycle all available "boundary" squares"
+CTRL+RIGHT CLICK to set "anchor" square. (cycling this square will cycle all available "boundary" squares
 
 Set Boundary via the button menus. 
 

@@ -54,9 +54,10 @@
         white-space: pre-wrap;
         color: rgba(0, 0, 0, 1);
         text-shadow: 0 0 142px #fff;
+        z-index: 100; /* Default Base Layer */
     }
     .intersection.no-shadow { text-shadow: none; }
-    .intersection.selected { box-shadow: 0 0 0 2px #007BFF; }
+    .intersection.selected { box-shadow: 0 0 0 80px #007BFF; }
     .intersection.boundary { background-color: rgba(144, 238, 144, 0.5) !important; }
     .intersection.anchor { background-color: rgba(255, 215, 0, 0.5) !important; }
     .intersection.anchor.boundary { background-color: rgba(255, 64, 64, 0.5) !important; }
@@ -82,6 +83,24 @@
         height: 100%;
         border: none;
     }
+
+    /* Layer Tag indicator on Intersection */
+    .layer-badge {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        font-size: 60px;
+        background: rgba(0, 0, 0, 0.6);
+        color: #fff;
+        padding: 4px 12px;
+        border-radius: 8px;
+        display: none;
+        pointer-events: none;
+        z-index: 10;
+        font-family: monospace;
+    }
+    .intersection.selected .layer-badge { display: block; }
+    body.inverted .layer-badge { background: rgba(255, 255, 255, 0.7); color: #000; }
 
     /* General control window styles */
     .control-window {
@@ -135,6 +154,7 @@
         line-height: 20px;
         cursor: pointer;
         font-size: 14px;
+        border-radius: 0 !important;
     }
     .close-btn { top: 5px; right: 5px; }
     .minimize-btn { top: 5px; right: 30px; }
@@ -157,7 +177,7 @@
     #grid-menu {
         position: absolute;
         top: calc(50% + 35px);
-        left: left: calc(50% + 305px);
+        left: calc(50% + 305px);
         background: none;
         border: none;
         display: flex;
@@ -204,7 +224,17 @@
         font-family: monospace;
     }
     #space-limit-input { width: 100px; }
-    button { padding: 5px 10px; cursor: pointer; background: rgba(255, 255, 255, 0.8); border: 1px solid #333; font-family: Arial, sans-serif; }
+    
+    /* Strict enforce square buttons */
+    button { 
+        padding: 5px 10px; 
+        cursor: pointer; 
+        background: rgba(255, 255, 255, 0.8); 
+        border: 1px solid #333; 
+        font-family: Arial, sans-serif; 
+        border-radius: 0px !important;
+    }
+    
     .wrap { white-space: normal; word-wrap: break-word; }
     .no-wrap { white-space: pre; overflow-x: auto; }
     #parsed-sets-display, #atom-index-display, #cycle-display, #input-index-display, #media-index-display, #formatted-text-display {
@@ -221,13 +251,14 @@
     #vector-mode { width: 150px; padding: 5px; background: rgba(255, 255, 255, 0.8); border: 1px solid #333; font-family: monospace; }
     .char-count { position: absolute; left: 180px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #fff; background: rgba(0, 0, 0, 0.7); padding: 3px 6px; border-radius: 3px; }
     #string-set-input-count, #mouse-control-input-count, #formatted-text-input-count { left: 330px; top: 25px; }
+    
     #toggle-visibility-btn, #toggle-actions-btn, #toggle-grid-btn {
         position: absolute;
         width: 30px;
         height: 30px;
         background: rgba(255, 255, 255, 0.8);
-        border: none;
-        border-radius: 50%;
+        border: 1px solid #333;
+        border-radius: 0px !important; /* Square corners */
         cursor: pointer;
         font-size: 16px;
         display: flex;
@@ -240,6 +271,7 @@
     #toggle-grid-btn { top: 50%; left: calc(50% + 305px); transform: translateY(-50%); }
     #toggle-visibility-btn { top: 50%; left: calc(50% + 340px); transform: translateY(-50%); }
     #toggle-actions-btn { top: 50%; left: calc(50% + 375px); transform: translateY(-50%); }
+    
     #visibility-menu, #actions-menu {
         position: absolute;
         background: none;
@@ -273,7 +305,7 @@
     <input type="hidden" id="initial-symbols" value="3そ ⲍ ⺃ ⷁ ⭓ ⴞ ⴞ ⲍ ᐇ ⺊">
     <div class="grid-container" id="grid"></div>
     <button id="toggle-grid-btn">ᐁ</button>
-    <div id="grid-menu">
+    <div id="grid-menu" style="display:none;">
         <button id="copy-btn" class="grid-option">Copy</button>
         <button id="paste-btn" class="grid-option">Paste</button>
         <button id="clear-all-btn" class="grid-option">Clear All</button>
@@ -350,12 +382,12 @@
     <div id="mouse-control-window" class="control-window" style="top: 250px; left: 450px;">
         <div class="close-btn" onclick="closeWindow(this.parentElement)">x</div>
         <div class="minimize-btn">-</div>
-        <span class="window-label">Mouse Control</span>
+        <span class="window-label">Sentence Parser</span>
         <div style="position: relative;">
             <textarea id="mouse-control-input" placeholder="Paste strings here"></textarea>
             <span id="mouse-control-input-count" class="char-count">0</span>
         </div>
-        <button onclick="processMouseControlPaste()">Process Paste</button>
+        <button onclick="processMouseControlPaste()">Parse Single Words</button>
         <button id="parse-special-btn">⚮ Parse</button>
         <div id="atom-index-display"></div>
     </div>
@@ -428,6 +460,27 @@
         <label><input type="checkbox" id="set-master-checkbox"> Set Master</label>
         <button onclick="applyFormat()">Apply Format</button>
     </div>
+    
+    <!-- NEW LAYERS CONTROL WINDOW -->
+    <div id="layers-window" class="control-window action-window" style="top: 150px; left: 850px;">
+        <div class="close-btn" onclick="closeWindow(this.parentElement)">x</div>
+        <div class="minimize-btn">-</div>
+        <span class="window-label">Layers / Z-Index Control</span>
+        <label for="layer-index-input">Z-Index: <span id="layer-index-value">100</span></label>
+        <input type="number" id="layer-index-input" min="1" max="9999" value="100">
+        <input type="range" id="layer-index-slider" min="1" max="9999" value="100">
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button onclick="stepLayer(-1)" style="flex: 1;">Send Backward [</button>
+            <button onclick="stepLayer(1)" style="flex: 1;">Bring Forward ]</button>
+        </div>
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button onclick="setLayerAbsolute(1)" style="flex: 1;">Send to Back</button>
+            <button onclick="setLayerAbsolute(9999)" style="flex: 1;">Bring to Front</button>
+        </div>
+        <label style="margin-top: 5px;"><input type="checkbox" id="layers-set-master"> Set Master</label>
+        <button onclick="applyLayers()" style="margin-top: 5px;">Apply Layer Depth</button>
+    </div>
+
     <div id="world-window" class="control-window action-window" style="top: 650px; left: 850px;">
         <div class="close-btn" onclick="closeWindow(this.parentElement)">x</div>
         <div class="minimize-btn">-</div>
@@ -539,6 +592,105 @@
     // 5. OR: Paste URLs directly into grid intersections for auto-loading
     //
     // ═══════════════════════════════════════════════════════════════════════
+    // Collision resolution for standard UI elements
+function resolveUICollisions() {
+        const uiElements = [
+            document.getElementById('toggle-visibility-btn'),
+            document.getElementById('toggle-actions-btn'),
+            document.getElementById('toggle-grid-btn'),
+            document.getElementById('visibility-menu'),
+            document.getElementById('actions-menu'),
+            document.getElementById('grid-menu')
+        ].filter(el => el && window.getComputedStyle(el).display !== 'none');
+
+        let hasCollisions = true;
+        let iters = 0;
+        
+        while(hasCollisions && iters < 50) {
+            hasCollisions = false;
+            iters++;
+            for(let i = 0; i < uiElements.length; i++) {
+                for(let j = i + 1; j < uiElements.length; j++) {
+                    const a = uiElements[i];
+                    const b = uiElements[j];
+                    const rectA = a.getBoundingClientRect();
+                    const rectB = b.getBoundingClientRect();
+                    
+                    if (rectA.left < rectB.right && rectA.right > rectB.left &&
+                        rectA.top < rectB.bottom && rectA.bottom > rectB.top) {
+                        hasCollisions = true;
+                        
+                        const overlapX = Math.min(rectA.right - rectB.left, rectB.right - rectA.left);
+                        const overlapY = Math.min(rectA.bottom - rectB.top, rectB.bottom - rectA.top);
+                        
+                        const currentLeftB = parseFloat(b.style.left) || rectB.left;
+                        const currentTopB = parseFloat(b.style.top) || rectB.top;
+                        const currentLeftA = parseFloat(a.style.left) || rectA.left;
+                        const currentTopA = parseFloat(a.style.top) || rectA.top;
+                        
+                        const aIsMenu = a.id.includes('menu');
+                        const bIsMenu = b.id.includes('menu');
+                        
+                        if (overlapX < overlapY) {
+                            if (aIsMenu && bIsMenu) {
+                                const shift = (overlapX / 2) + 5;
+                                if (rectA.left < rectB.left) {
+                                    a.style.left = `${currentLeftA - shift}px`;
+                                    b.style.left = `${currentLeftB + shift}px`;
+                                } else {
+                                    a.style.left = `${currentLeftA + shift}px`;
+                                    b.style.left = `${currentLeftB - shift}px`;
+                                }
+                            } else {
+                                if (rectA.left < rectB.left) {
+                                    b.style.left = `${currentLeftB + overlapX + 5}px`;
+                                } else {
+                                    b.style.left = `${currentLeftB - overlapX - 5}px`;
+                                }
+                            }
+                        } else {
+                            if (aIsMenu && bIsMenu) {
+                                const shift = (overlapY / 2) + 5;
+                                if (rectA.top < rectB.top) {
+                                    a.style.top = `${currentTopA - shift}px`;
+                                    b.style.top = `${currentTopB + shift}px`;
+                                } else {
+                                    a.style.top = `${currentTopA + shift}px`;
+                                    b.style.top = `${currentTopB - shift}px`;
+                                }
+                            } else {
+                                if (rectA.top < rectB.top) {
+                                    b.style.top = `${currentTopB + overlapY + 5}px`;
+                                } else {
+                                    b.style.top = `${currentTopB - overlapY - 5}px`;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Opens window constrained to viewport dimensions
+    function openWindowInViewport(element) {
+        element.classList.remove('minimized');
+        element.style.display = 'flex';
+        
+        requestAnimationFrame(() => {
+            const rect = element.getBoundingClientRect();
+            let left = parseFloat(element.dataset.originalLeft || element.style.left) || 0;
+            let top = parseFloat(element.dataset.originalTop || element.style.top) || 0;
+            
+            if (left + rect.width > window.innerWidth) left = Math.max(10, window.innerWidth - rect.width - 10);
+            if (left < 0) left = 10;
+            if (top + rect.height > window.innerHeight) top = Math.max(10, window.innerHeight - rect.height - 10);
+            if (top < 0) top = 10;
+            
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
+        });
+    }
 
     function createSelectionApparatus({
   gridSize = 10,
@@ -651,6 +803,55 @@
     let currentFormattedText = '';
     let currentGridSize = 12;
     let apparatus = null;
+	
+	const StateManager = {
+    history: [],
+    currentIndex: -1,
+    maxHistory: 500,
+    isRestoring: false,
+
+    save() {
+        if (this.isRestoring) return;
+        const state = intersections.map(i => ({
+            dataset: { ...i.dataset },
+            style: { 
+                left: i.style.left, top: i.style.top, 
+                width: i.style.width, height: i.style.height, 
+                fontSize: i.style.fontSize, color: i.style.color, 
+                backgroundColor: i.style.backgroundColor, zIndex: i.style.zIndex 
+            }
+        }));
+        
+        this.history = this.history.slice(0, this.currentIndex + 1);
+        this.history.push(state);
+        if (this.history.length > this.maxHistory) this.history.shift();
+        else this.currentIndex++;
+    },
+
+    restore(index) {
+        if (index < 0 || index >= this.history.length) return;
+        this.isRestoring = true;
+        const state = this.history[index];
+        
+        intersections.forEach((i, idx) => {
+            const s = state[idx];
+            if (!s) return;
+            Object.assign(i.dataset, s.dataset);
+            Object.assign(i.style, s.style);
+            updateIntersectionContent(i);
+        });
+        
+        this.currentIndex = index;
+        runLayoutCollisions();
+        this.isRestoring = false;
+    }
+};
+
+// Global Hotkeys for Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z)
+document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); StateManager.restore(StateManager.currentIndex - 1); }
+    if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) { e.preventDefault(); StateManager.restore(StateManager.currentIndex + 1); }
+});
 
     // ── OBJ D / E / F: formatting-preservation infrastructure ──────────────
     //
@@ -707,11 +908,12 @@
         { id: 'formatted-text-window', label: 'Formatted Text Input', element: document.getElementById('formatted-text-window') },
         { id: 'parsing-window', label: 'String Character Parsing', element: document.getElementById('parsing-window') },
         { id: 'parsed-sets-window', label: 'Parsed String Sets Index', element: document.getElementById('parsed-sets-window') },
-        { id: 'mouse-control-window', label: 'Mouse Control', element: document.getElementById('mouse-control-window') },
+        { id: 'mouse-control-window', label: 'Sentence Parser', element: document.getElementById('mouse-control-window') },
         { id: 'vector-window', label: 'Vector Graphics', element: document.getElementById('vector-window') },
         { id: 'world-window', label: 'World', element: document.getElementById('world-window') },
         { id: 'media-input-window', label: 'Media Input', element: document.getElementById('media-input-window') },
-        { id: 'media-index-window', label: 'Media Index', element: document.getElementById('media-index-window') }
+        { id: 'media-index-window', label: 'Media Index', element: document.getElementById('media-index-window') },
+        { id: 'layers-window', label: 'Layers / Z-Index Control', element: document.getElementById('layers-window') }
     ];
 
     const visibilityMenu = document.getElementById('visibility-menu');
@@ -726,12 +928,13 @@
                     element.style.display = element.style.display === 'none' ? 'block' : 'none';
                 } else {
                     if (element.style.display === 'none') {
-                        element.style.left = element.dataset.originalLeft;
-                        element.style.top = element.dataset.originalTop;
+                        element.style.left = element.dataset.originalLeft || element.style.left;
+                        element.style.top = element.dataset.originalTop || element.style.top;
                         element.style.width = '';
                         element.style.height = '';
                         element.classList.remove('minimized');
                         element.style.display = 'flex';
+                        openWindowInViewport(element);
                     } else {
                         element.style.display = 'none';
                     }
@@ -759,6 +962,7 @@
                 sizeLimitWindow.style.height = '';
                 sizeLimitWindow.classList.remove('minimized');
                 sizeLimitWindow.style.display = 'flex';
+                openWindowInViewport(sizeLimitWindow);
             } else {
                 sizeLimitWindow.style.display = 'none';
             }
@@ -773,8 +977,24 @@
                 resizeWindow.style.height = '';
                 resizeWindow.classList.remove('minimized');
                 resizeWindow.style.display = 'flex';
+                openWindowInViewport(resizeWindow);
             } else {
                 resizeWindow.style.display = 'none';
+            }
+            updateVisibilityMenu();
+        }},
+        { id: 'layers', label: 'Layers (Z-Index)', action: () => {
+            const layersWindow = document.getElementById('layers-window');
+            if (layersWindow.style.display === 'none') {
+                layersWindow.style.left = layersWindow.dataset.originalLeft || "850px";
+                layersWindow.style.top = layersWindow.dataset.originalTop || "150px";
+                layersWindow.style.width = '';
+                layersWindow.style.height = '';
+                layersWindow.classList.remove('minimized');
+                layersWindow.style.display = 'flex';
+                openWindowInViewport(layersWindow);
+            } else {
+                layersWindow.style.display = 'none';
             }
             updateVisibilityMenu();
         }},
@@ -788,6 +1008,7 @@
                 formatWindow.style.height = '';
                 formatWindow.classList.remove('minimized');
                 formatWindow.style.display = 'flex';
+                openWindowInViewport(formatWindow);
             } else {
                 formatWindow.style.display = 'none';
             }
@@ -809,26 +1030,50 @@
     }
     updateActionsMenu();
 
-    const toggleVisibilityBtn = document.getElementById('toggle-visibility-btn');
+	const toggleVisibilityBtn = document.getElementById('toggle-visibility-btn');
     toggleVisibilityBtn.addEventListener('click', () => {
-        visibilityMenu.style.display = visibilityMenu.style.display === 'flex' ? 'none' : 'flex';
+        const isOpening = visibilityMenu.style.display !== 'flex';
+        visibilityMenu.style.display = isOpening ? 'flex' : 'none';
+        
         const actionsBtn = document.getElementById('toggle-actions-btn');
-        actionsBtn.style.display = visibilityMenu.style.display === 'flex' ? 'flex' : 'none';
+        actionsBtn.style.display = isOpening ? 'flex' : 'none';
+        
+        if (isOpening) {
+            const rect = toggleVisibilityBtn.getBoundingClientRect();
+            visibilityMenu.style.left = `${rect.left}px`;
+            visibilityMenu.style.top = `${rect.bottom + 5}px`;
+        }
+        resolveUICollisions();
     });
 
     const actionsBtn = document.getElementById('toggle-actions-btn');
     actionsBtn.style.display = visibilityMenu.style.display === 'flex' ? 'flex' : 'none';
-    const toggleActionsBtn = document.getElementById('toggle-actions-btn');
+	const toggleActionsBtn = document.getElementById('toggle-actions-btn');
     toggleActionsBtn.addEventListener('click', () => {
-        actionsMenu.style.display = actionsMenu.style.display === 'flex' ? 'none' : 'flex';
+        const isOpening = actionsMenu.style.display !== 'flex';
+        actionsMenu.style.display = isOpening ? 'flex' : 'none';
+        
+        if (isOpening) {
+            const rect = toggleActionsBtn.getBoundingClientRect();
+            actionsMenu.style.left = `${rect.left}px`;
+            actionsMenu.style.top = `${rect.bottom + 5}px`;
+        }
+        resolveUICollisions();
     });
 
-    const toggleGridBtn = document.getElementById('toggle-grid-btn');
+	const toggleGridBtn = document.getElementById('toggle-grid-btn');
     toggleGridBtn.addEventListener('click', () => {
         const gridMenu = document.getElementById('grid-menu');
-        const isVisible = gridMenu.style.display !== 'none';
-        gridMenu.style.display = isVisible ? 'none' : 'flex';
-        toggleGridBtn.textContent = isVisible ? 'ᐃ' : 'ᐁ';
+        const isOpening = gridMenu.style.display === 'none';
+        gridMenu.style.display = isOpening ? 'flex' : 'none';
+        toggleGridBtn.textContent = isOpening ? 'ᐃ' : 'ᐁ';
+        
+        if (isOpening) {
+            const rect = toggleGridBtn.getBoundingClientRect();
+            gridMenu.style.left = `${rect.left}px`;
+            gridMenu.style.top = `${rect.bottom + 5}px`;
+        }
+        resolveUICollisions();
     });
 
     const inputs = [
@@ -876,6 +1121,7 @@
             worldWindow.style.height = '';
             worldWindow.classList.remove('minimized');
             worldWindow.style.display = 'flex';
+            openWindowInViewport(worldWindow);
         } else {
             worldWindow.style.display = 'none';
         }
@@ -1035,6 +1281,13 @@
             for (let j = 0; j < size; j++) {
                 const intersection = document.createElement('div');
                 intersection.classList.add('intersection');
+                
+                // Add Layer Tag Indicator
+                const badge = document.createElement('div');
+                badge.classList.add('layer-badge');
+                badge.textContent = 'Z: 100';
+                intersection.appendChild(badge);
+
                 const content = document.createElement('div');
                 content.classList.add('intersection-content');
                 intersection.appendChild(content);
@@ -1049,10 +1302,14 @@
                 intersection.dataset.gridScale = '1';
                 intersection.dataset.contentScale = '1';
                 intersection.dataset.isScaled = 'false';
+                intersection.dataset.zIndex = '100'; // Layer Default
+                
                 intersection.style.left = `${j * 3500}px`;
                 intersection.style.top = `${i * 3500}px`;
                 intersection.style.width = '2856px';
                 intersection.style.height = '2856px';
+                intersection.style.zIndex = '100';
+                
                 intersection.addEventListener('click', (e) => handleIntersectionClick(e, intersection));
                 intersection.addEventListener('keydown', (e) => handleKeyInput(e, intersection));
                 intersection.addEventListener('mousedown', (e) => startIntersectionDrag(e, intersection));
@@ -1096,11 +1353,13 @@
                 }
             });
         });
-        selectedIntersections = intersections.filter(i => i.classList.contains('selected'));
+        selectedIntersections = intersections.filter(i => i.classList.contains('selected')); 
+		StateManager.save();
     }
 
     // Initialize grid with default size
     createGrid(currentGridSize);
+
 
     function enableSetTextMode() {
         isSetTextMode = !isSetTextMode;
@@ -1151,7 +1410,7 @@
         });
         document.querySelectorAll('.grid-option, .visibility-option, .action-option, #toggle-visibility-btn, #toggle-actions-btn, #toggle-grid-btn')
             .forEach(el => el.classList.toggle('no-shadow', !shadowsEnabled));
-        document.querySelectorAll('#size-limit-window label, #resize-window label, #format-window label, #world-window label')
+        document.querySelectorAll('#size-limit-window label, #resize-window label, #format-window label, #world-window label, #layers-window label')
             .forEach(label => label.classList.toggle('no-shadow', !shadowsEnabled));
         actionsMenu.style.display = 'none';
         updateVisibilityMenu();
@@ -1264,11 +1523,95 @@
         }
     }
 
-    // ── OBJ F: line-count-aware intersection sizing ─────────────────────────
-    // When the rendered string contains newlines the intersection height is
-    // scaled by the number of lines.  This prevents vertical clipping of
-    // indented paragraphs, multi-line pastes, and any other structure that
-    // contains original line breaks.
+/**
+ * Resolves visual overlaps for arbitrary XY floating-point layouts.
+ */
+function resolveCollisions(intersections, iterations = 4, padding = 4) {
+    const len = intersections.length;
+    
+    for (let iter = 0; iter < iterations; iter++) {
+        let hasCollisions = false;
+        
+        for (let i = 0; i < len; i++) {
+            for (let j = i + 1; j < len; j++) {
+                const a = intersections[i];
+                const b = intersections[j];
+
+                // --- NEW LOGIC FOR Z=99 Collision Exception ---
+                if ((a.zIndex === 99 || b.zIndex === 99) && a.zIndex !== b.zIndex) {
+                    continue; // Skip physical layout collisions if one is 99 and the other is not
+                }
+                // ----------------------------------------------
+
+                // 1. Calculate centers
+                const aCenterX = a.x + (a.width / 2);
+                const aCenterY = a.y + (a.height / 2);
+                const bCenterX = b.x + (b.width / 2);
+                const bCenterY = b.y + (b.height / 2);
+
+                // 2. Calculate distances and minimum required separation
+                const dx = Math.abs(aCenterX - bCenterX);
+                const dy = Math.abs(aCenterY - bCenterY);
+                
+                const minX = (a.width + b.width) / 2 + padding;
+                const minY = (a.height + b.height) / 2 + padding;
+
+                // 3. Check for AABB intersection
+                if (dx < minX && dy < minY) {
+                    hasCollisions = true;
+                    
+                    const px = minX - dx;
+                    const py = minY - dy;
+
+                    const dirX = (aCenterX < bCenterX) ? -1 : 1;
+                    const dirY = (aCenterY < bCenterY) ? -1 : 1;
+
+                    let weightA = a.isScaled ? 0 : 0.5;
+                    let weightB = b.isScaled ? 0 : 0.5;
+                    
+                    if (weightA === weightB) {
+                        weightA = 0.5;
+                        weightB = 0.5;
+                    } else if (weightA === 0) {
+                        weightB = 1.0;
+                    } else {
+                        weightA = 1.0;
+                    }
+
+                    if (px < py) {
+                        a.x += (px * dirX) * weightA;
+                        b.x -= (px * dirX) * weightB;
+                    } else {
+                        a.y += (py * dirY) * weightA;
+                        b.y -= (py * dirY) * weightB;
+                    }
+                }
+            }
+        }
+        
+        if (!hasCollisions) break;
+    }
+}
+
+function runLayoutCollisions() {
+    const layoutData = intersections.map(el => ({
+        element: el,
+        x: parseFloat(el.style.left) || 0,
+        y: parseFloat(el.style.top) || 0,
+        width: parseFloat(el.style.width) || 2856,
+        height: parseFloat(el.style.height) || 2856,
+        isScaled: el.dataset.isScaled === 'true',
+        zIndex: parseInt(el.dataset.zIndex || el.style.zIndex || 100) // Read current Z-Index
+    }));
+
+    resolveCollisions(layoutData, 4, 10);
+
+    layoutData.forEach(item => {
+        item.element.style.left = `${item.x}px`;
+        item.element.style.top = `${item.y}px`;
+    });
+}
+
     function resizeIntersection(intersection) {
         const maxHeight = parseInt(document.getElementById('max-size-slider').value);
         const minHeight = parseInt(document.getElementById('min-size-slider').value);
@@ -1331,7 +1674,74 @@
         intersection.style.height = `${newHeight}px`;
         intersection.style.left = `${currentCenterX - newWidth / 2}px`;
         intersection.style.top = `${currentCenterY - newHeight / 2}px`;
+		runLayoutCollisions();
     }
+
+    // ── LAYERS LOGIC IMPLEMENTATION ──────────────────────────────────────────
+    const layerSlider = document.getElementById('layer-index-slider');
+    const layerInput = document.getElementById('layer-index-input');
+    const layerValue = document.getElementById('layer-index-value');
+
+    layerSlider.addEventListener('input', () => {
+        layerValue.textContent = layerSlider.value;
+        layerInput.value = layerSlider.value;
+        applyLayersLive();
+    });
+
+    layerInput.addEventListener('input', () => {
+        let value = Math.max(1, Math.min(9999, parseInt(layerInput.value) || 100));
+        layerSlider.value = layerValue.textContent = value;
+        applyLayersLive();
+    });
+
+    function applyLayersLive() {
+        const newZ = parseInt(layerSlider.value);
+        const setMaster = document.getElementById('layers-set-master').checked;
+        const targets = setMaster ? intersections : selectedIntersections.filter(i => !i.classList.contains('locked'));
+        targets.forEach(intersection => {
+            intersection.dataset.zIndex = newZ;
+            intersection.style.zIndex = newZ;
+            const badge = intersection.querySelector('.layer-badge');
+            if (badge) badge.textContent = `Z: ${newZ}`;
+        });
+        runLayoutCollisions();
+		StateManager.save();
+    }
+
+    function applyLayers() {
+        applyLayersLive();
+        document.getElementById('layers-window').style.display = 'none';
+        updateVisibilityMenu();
+    }
+
+    function stepLayer(dir) {
+        selectedIntersections.forEach(intersection => {
+            if (intersection.classList.contains('locked')) return;
+            let z = parseInt(intersection.dataset.zIndex || intersection.style.zIndex || 100);
+            z = Math.max(1, Math.min(9999, z + dir));
+            intersection.dataset.zIndex = z;
+            intersection.style.zIndex = z;
+            const badge = intersection.querySelector('.layer-badge');
+            if (badge) badge.textContent = `Z: ${z}`;
+            layerSlider.value = layerInput.value = layerValue.textContent = z;
+        });
+        runLayoutCollisions();
+		StateManager.save();
+    }
+
+    function setLayerAbsolute(val) {
+        selectedIntersections.forEach(intersection => {
+            if (intersection.classList.contains('locked')) return;
+            intersection.dataset.zIndex = val;
+            intersection.style.zIndex = val;
+            const badge = intersection.querySelector('.layer-badge');
+            if (badge) badge.textContent = `Z: ${val}`;
+            layerSlider.value = layerInput.value = layerValue.textContent = val;
+        });
+        runLayoutCollisions();
+		StateManager.save();
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     const maxSizeSlider = document.getElementById('max-size-slider');
     const minSizeSlider = document.getElementById('min-size-slider');
@@ -1689,6 +2099,7 @@
                 resizeIntersection(intersection);
             }
         });
+		StateManager.save();
     }
 
     function handleIntersectionClick(e, intersection) {
@@ -1753,6 +2164,13 @@
         resizeWidthInput.value = resizeWidthSlider.value;
         resizeHeightSlider.value = parseFloat(intersection.style.height) || 2856;
         resizeHeightInput.value = resizeHeightSlider.value;
+        
+        // Z-Index / Layer Update
+        const currentZ = parseInt(intersection.dataset.zIndex || intersection.style.zIndex || 100);
+        layerSlider.value = currentZ;
+        layerInput.value = currentZ;
+        layerValue.textContent = currentZ;
+        
         resizeWidthValue.textContent = resizeWidthSlider.value;
         resizeHeightValue.textContent = resizeHeightSlider.value;
         scaleGridSquareValue.textContent = scaleGridSquareSlider.value;
@@ -1784,7 +2202,9 @@
                 inputIndex.add(input);
                 resizeIntersection(intersection);
                 updateInputIndexDisplay();
+				StateManager.save();
                 e.target.value = '';
+				StateManager.save();
                 const contentScale = parseFloat(intersection.dataset.contentScale) || 1;
                 const content = intersection.querySelector('.intersection-content');
                 content.style.transform = `scale(${contentScale})`;
@@ -1841,24 +2261,83 @@
                 element.style.left = `${left + dx}px`;
                 element.style.top = `${top + dy}px`;
             });
+			runLayoutCollisions();
         } else if (isDraggingIntersection && currentIntersection) {
             const containerRect = grid.getBoundingClientRect();
             const x = (e.clientX - intersectionOffsetX - containerRect.left) / zoomLevel;
             const y = (e.clientY - intersectionOffsetY - containerRect.top) / zoomLevel;
             currentIntersection.style.left = `${x}px`;
             currentIntersection.style.top = `${y}px`;
+			runLayoutCollisions();
         }
     }
+    document.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const isOverUI = e.target.closest('.control-window') || e.target.closest('.grid-option') || 
+                        e.target.closest('#toggle-visibility-btn') || e.target.closest('#toggle-actions-btn') || 
+                        e.target.closest('#toggle-grid-btn') || e.target.closest('#visibility-menu') || 
+                        e.target.closest('#actions-menu') || e.target.closest('#grid-menu') || 
+                        e.target.closest('#pixel-stick') || e.target.closest('input') || 
+                        e.target.closest('button') || e.target.closest('textarea') || e.target.closest('select');
+        if (isOverUI) return;
 
+        if (e.altKey || (selectedIntersections.length === 0 || (cycleIndex.length === 0 && mediaIndex.length === 0))) {
+            const zoomSpeed = 0.1;
+            const currentZoom = parseFloat(grid.style.getPropertyValue('--zoom-level')) || 0.014;
+            const maxZoom = window.innerWidth / 20;
+            const minZoom = 0.001;
+            let newZoom = currentZoom * (e.deltaY < 0 ? (1 + zoomSpeed) : (1 - zoomSpeed));
+            newZoom = Math.max(minZoom, Math.min(newZoom, maxZoom));
+
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const gridWidth = gridHeight = 42000;
+
+            const currentPanX = parseFloat(grid.style.getPropertyValue('--pan-x')) || 0;
+            const currentPanY = parseFloat(grid.style.getPropertyValue('--pan-y')) || 0;
+
+            const worldMouseX = ((mouseX - viewportWidth / 2) / currentZoom - currentPanX) + gridWidth / 2;
+            const worldMouseY = ((mouseY - viewportHeight / 2) / currentZoom - currentPanY) + gridHeight / 2;
+
+            const newPanX = -((worldMouseX - gridWidth / 2) * newZoom - (mouseX - viewportWidth / 2)) / newZoom;
+            const newPanY = -((worldMouseY - gridHeight / 2) * newZoom - (mouseY - viewportHeight / 2)) / newZoom;
+
+            grid.style.setProperty('--zoom-level', newZoom);
+            grid.style.setProperty('--pan-x', `${newPanX}px`);
+            grid.style.setProperty('--pan-y', `${newPanY}px`);
+            panX = newPanX;
+            panY = newPanY;
+        } else {
+            const isForward = e.deltaY > 0;
+            const intersectionsToCycle = new Set(selectedIntersections.filter(i => !i.classList.contains('locked')));
+            if (boundaryIntersections.length > 0 && selectedIntersections.some(i => anchorIntersections.includes(i))) {
+                anchorIntersections.forEach(i => {
+                    if (selectedIntersections.includes(i) && !i.classList.contains('locked')) intersectionsToCycle.add(i);
+                });
+                boundaryIntersections.forEach(i => {
+                    if (!i.classList.contains('locked')) intersectionsToCycle.add(i);
+                });
+            }
+            if (isShiftPressed) {
+                cycleMedia(intersectionsToCycle, isForward);
+            } else {
+                cycleIntersections(intersectionsToCycle, isForward);
+            }
+        }
+    });
     function stopIntersectionDrag() {
         if (isDraggingIntersection) {
             isDraggingIntersection = false;
             currentIntersection.style.cursor = 'pointer';
             currentIntersection = null;
+			StateManager.save();
         } else if (isDraggingGroup) {
             isDraggingGroup = false;
             initialPositions.forEach(({ element }) => element.style.cursor = 'pointer');
             initialPositions = [];
+			StateManager.save();
         }
     }
 
@@ -1924,6 +2403,7 @@
             currentButton.style.transform = 'none';
             const menuWidth = Math.min(window.innerWidth / 5, 300);
             const menuLeft = Math.min(x, window.innerWidth - menuWidth - 10);
+            
             if (currentButton.id === 'toggle-visibility-btn') {
                 visibilityMenu.style.left = `${menuLeft}px`;
                 visibilityMenu.style.top = `${y + 35}px`;
@@ -1939,6 +2419,7 @@
                 document.getElementById('grid-menu').style.left = `${menuLeft}px`;
                 document.getElementById('grid-menu').style.top = `${y + 35}px`;
             }
+            resolveUICollisions();
         }
     }
 
@@ -1947,6 +2428,7 @@
             isDraggingButton = false;
             currentButton.style.cursor = 'pointer';
             currentButton = null;
+            resolveUICollisions();
         }
     }
 
@@ -1973,7 +2455,7 @@
     // whitespace.  Removing .trim() here lets the search value match those
     // strings exactly as stored.
     function searchAndSelect() {
-        const searchStr = document.getElementById('search-input').value;   // no .trim()
+        const searchStr = document.getElementById('search-input').value;
         if (!searchStr) return;
         const matchingRowsCols = [];
         intersections.forEach((i, idx) => {
@@ -2065,7 +2547,8 @@
     // resulting token is length-checked (after stripping trailing punctuation)
     // and, if it matches a requested limit, added to the cycle via the gate
     // with its formatting flag set appropriately.
-    function parseBySpaceLimit() {
+  
+  function parseBySpaceLimit() {
         const spaceLimitsInput = document.getElementById('space-limit-input').value.trim();
         const spaceLimits = spaceLimitsInput.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
         const input = document.getElementById('string-set-input').value;   // no .trim()
@@ -2108,7 +2591,7 @@
         updateParsedSetsDisplay();
     }
 
-    // ── OBJ D / F: Mouse Control paste processor ────────────────────────────
+    // ── OBJ D / F: Sentence Parser paste processor ────────────────────────────
     // Original behaviour: .trim() then split(/\s+/) — every newline, tab and
     // multi-space run was collapsed.
     //
@@ -2325,12 +2808,14 @@
                         intersection.dataset.media = url;
                         intersection.dataset.char = '';
                     } else {
-                        intersection.dataset.char = line;
-                        intersection.dataset.media = '';
-                        if (hasOriginalFormatting(line)) {
-                            formattedFlags.set(line, true);
-                        }
-                        inputIndex.add(line);
+                    intersection.dataset.char = line;
+                    intersection.dataset.media = '';
+                    intersection.dataset.isScaled = 'false';
+                    updateIntersectionContent(intersection);
+                    if (hasOriginalFormatting(line)) {
+                        formattedFlags.set(line, true);
+                    }
+                    inputIndex.add(line);
                     }
                     
                     intersection.dataset.isScaled = 'false';
@@ -2466,6 +2951,17 @@
 
     document.addEventListener('keydown', (e) => {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            // LAYER HOTKEYS IMPLEMENTATION
+            if (e.key === '[' || e.key === ']') {
+                e.preventDefault();
+                if (e.ctrlKey) {
+                    setLayerAbsolute(e.key === '[' ? 1 : 9999);
+                } else {
+                    stepLayer(e.key === '[' ? -1 : 1);
+                }
+                return;
+            }
+
             if (e.ctrlKey && e.key === 'c' && selectedIntersections.length > 0) {
                 e.preventDefault();
                 copySelected();
@@ -2567,6 +3063,7 @@
                 ctx.restore();
             }
         } else {
+            const isForward = e.deltaY > 0;
             const intersectionsToCycle = new Set(selectedIntersections.filter(i => !i.classList.contains('locked')));
             if (boundaryIntersections.length > 0 && selectedIntersections.some(i => anchorIntersections.includes(i))) {
                 anchorIntersections.forEach(i => {
@@ -2704,8 +3201,8 @@
             isDraggingWindow = false;
             currentWindow.style.cursor = 'default';
             currentWindow = null;
+            }
         }
-    }
 
     document.addEventListener('mousedown', startWindowDrag);
     document.addEventListener('mousemove', dragWindow);

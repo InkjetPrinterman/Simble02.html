@@ -1,4 +1,4 @@
-Simble03.html 
+Simble02.html 
 
 Only thing that SURELY DOES NOT WORK is the "vector graphics" module. Yet. 
 
@@ -6,6 +6,7 @@ For HTTPS:// and HTTP:// .html connects, make sure you are running your .html fr
 
 remember to zoom!
 
+ALT+SCROLL WHEEL zooms while having a grid intersection selected
 
 CTRL+ARROW KEYS to select grid squares 
 
